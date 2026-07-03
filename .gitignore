@@ -37,4 +37,5 @@ dev-server*.log
 # typescript
 next-env.d.ts
 /dist/
+/.vinext/
 /.wrangler/
