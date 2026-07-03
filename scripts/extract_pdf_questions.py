@@ -306,7 +306,33 @@ def image_owners(pdf: pdfplumber.PDF, starts: list[tuple[int, float, int]]) -> d
     return owners
 
 
-def render_question_images(owners: dict[int, list[tuple[int, dict]]]) -> dict[int, list[str]]:
+def text_crop_limits(
+    q_number: int,
+    page_index: int,
+    image: dict,
+    lines_by_page: list[list[dict]],
+    starts: list[tuple[int, float, int]],
+) -> tuple[float, float]:
+    top_limit = 0.0
+    bottom_limit = 10_000.0
+
+    for line in lines_by_page[page_index]:
+        if owner_question(starts, page_index, line["top"]) != q_number:
+            continue
+
+        if line["bottom"] <= image["top"]:
+            top_limit = max(top_limit, line["bottom"] + 2)
+        elif line["top"] >= image["bottom"]:
+            bottom_limit = min(bottom_limit, line["top"] - 2)
+
+    return top_limit, bottom_limit
+
+
+def render_question_images(
+    owners: dict[int, list[tuple[int, dict]]],
+    lines_by_page: list[list[dict]],
+    starts: list[tuple[int, float, int]],
+) -> dict[int, list[str]]:
     IMAGE_DIR.mkdir(parents=True, exist_ok=True)
     for old in IMAGE_DIR.glob("*"):
         old.unlink()
@@ -324,10 +350,17 @@ def render_question_images(owners: dict[int, list[tuple[int, dict]]]) -> dict[in
             pil_image = rendered_pages[page_index]
 
             margin = 8
+            top_limit, bottom_limit = text_crop_limits(q_number, page_index, image, lines_by_page, starts)
             left = max(0, int((image["x0"] - margin) * scale))
-            top = max(0, int((image["top"] - margin) * scale))
+            top_pt = max(image["top"] - margin, top_limit)
+            bottom_pt = min(image["bottom"] + margin, bottom_limit)
+            if bottom_pt <= top_pt:
+                top_pt = image["top"]
+                bottom_pt = image["bottom"]
+
+            top = max(0, int(top_pt * scale))
             right = min(pil_image.width, int((image["x1"] + margin) * scale))
-            bottom = min(pil_image.height, int((image["bottom"] + margin) * scale))
+            bottom = min(pil_image.height, int(bottom_pt * scale))
             crop = pil_image.crop((left, top, right, bottom))
 
             filename = f"q{q_number:03d}-{image_index}.webp"
@@ -349,7 +382,7 @@ def main() -> None:
         questions = extract_plain_questions(pdf)
         layout_options = extract_layout_options(lines_by_page, starts)
         answers = detect_answers(pdf, starts, option_starts_for_page(lines_by_page, starts))
-        images = render_question_images(image_owners(pdf, starts))
+        images = render_question_images(image_owners(pdf, starts), lines_by_page, starts)
 
     missing = []
     for number in range(1, 601):
