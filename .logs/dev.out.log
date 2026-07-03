@@ -1,0 +1,12 @@
+
+> site-creator-vinext-starter@0.1.0 dev
+> vinext dev --host 127.0.0.1 --port 3000
+
+
+  vinext dev  (Vite 8.0.13)
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m3000[22m/[39m
+  [32m➜[39m  [1mDebug[22m:   [2m[33mhttp://localhost:[1m3000[22m[2m/__debug[39m[22m
+ GET / 200 in 1.2s (compile: 1783089699.4s, render: 1.1s)
+ GET / 200 in 118ms (compile: 1783089699.4s, render: 78ms)
+ GET / 200 in 95ms (compile: 1783089699.4s, render: 71ms)
