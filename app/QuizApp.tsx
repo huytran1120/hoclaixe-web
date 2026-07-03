@@ -6,6 +6,7 @@ import type { Question } from "./types";
 
 const EXAM_SIZE = 50;
 const EXAM_SECONDS = 33 * 60;
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 type Mode = "study" | "exam";
 type ExamStatus = "idle" | "active" | "done";
@@ -33,6 +34,13 @@ function shuffleQuestions(questions: Question[]) {
   return copy;
 }
 
+function withBasePath(path: string) {
+  if (!BASE_PATH || !path.startsWith("/")) {
+    return path;
+  }
+  return `${BASE_PATH}${path}`;
+}
+
 function QuestionView({
   question,
   selected,
@@ -58,7 +66,7 @@ function QuestionView({
           {question.images.map((image) => (
             <Image
               key={image}
-              src={image}
+              src={withBasePath(image)}
               alt={`Hình minh họa câu ${question.id}`}
               width={900}
               height={520}
