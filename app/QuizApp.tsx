@@ -63,6 +63,7 @@ function QuestionView({
               width={900}
               height={520}
               sizes="(max-width: 900px) 100vw, 760px"
+              unoptimized
             />
           ))}
         </div>
