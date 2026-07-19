@@ -21,6 +21,14 @@ const EXAM_DISTRIBUTION: { chapter: string; count: number }[] = [
   { chapter: "Giải thế sa hình và xử lý tình huống", count: 9 },
 ];
 
+// Các trái tim bay lên trong màn chúc mừng khi thi đỗ.
+const CELEBRATION_HEARTS = Array.from({ length: 14 }, (_, index) => ({
+  id: index,
+  left: (index * 37) % 100,
+  delay: Number(((index % 7) * 0.45).toFixed(2)),
+  duration: 3 + (index % 4),
+}));
+
 type Mode = "study" | "exam";
 type ExamStatus = "idle" | "active" | "done";
 
@@ -177,6 +185,7 @@ export default function QuizApp({ questions }: { questions: Question[] }) {
   const [examAnswers, setExamAnswers] = useState<Record<number, number>>({});
   const [timeLeft, setTimeLeft] = useState(EXAM_SECONDS);
   const [examResult, setExamResult] = useState<ExamResult | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const chapters = useMemo(
     () => ["Tất cả", ...Array.from(new Set(questions.map((item) => item.chapter)))],
@@ -220,6 +229,7 @@ export default function QuizApp({ questions }: { questions: Question[] }) {
       unanswered,
       wrong: examQuestions.length - correct - unanswered,
     });
+    setShowCelebration(correct >= PASS_SCORE);
     setExamStatus("done");
     setExamIndex(0);
   }, [examAnswers, examQuestions]);
@@ -247,6 +257,7 @@ export default function QuizApp({ questions }: { questions: Question[] }) {
     setExamResult(null);
     setExamIndex(0);
     setTimeLeft(EXAM_SECONDS);
+    setShowCelebration(false);
     setExamStatus("active");
     setMode("exam");
   };
@@ -497,6 +508,42 @@ export default function QuizApp({ questions }: { questions: Question[] }) {
               </>
             ) : null}
           </section>
+
+          {showCelebration ? (
+            <div
+              className="celebrate-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Chúc mừng Pu thi đỗ"
+            >
+              <div className="celebrate-float" aria-hidden="true">
+                {CELEBRATION_HEARTS.map((heart) => (
+                  <span
+                    key={heart.id}
+                    style={{
+                      left: `${heart.left}%`,
+                      animationDelay: `${heart.delay}s`,
+                      animationDuration: `${heart.duration}s`,
+                    }}
+                  >
+                    ❤
+                  </span>
+                ))}
+              </div>
+              <div className="celebrate-card">
+                <div className="celebrate-heart" aria-hidden="true">
+                  ❤
+                </div>
+                <h2>Pu đã thi đỗ bằng lái.</h2>
+                <p className="celebrate-wish">Chúc Pu thi tốt</p>
+                <p className="celebrate-love">Yêu Pu mãi</p>
+                <p className="celebrate-sign">ck yêu</p>
+                <button type="button" onClick={() => setShowCelebration(false)}>
+                  Xem lại bài
+                </button>
+              </div>
+            </div>
+          ) : null}
         </section>
       )}
     </main>
