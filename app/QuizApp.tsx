@@ -4,9 +4,22 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import type { Question } from "./types";
 
-const EXAM_SIZE = 50;
-const EXAM_SECONDS = 33 * 60;
+const EXAM_SIZE = 30;
+const EXAM_SECONDS = 20 * 60;
+const PASS_SCORE = 27;
 const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+// Bố cục đề thi lý thuyết lái xe hạng B: 30 câu, phân bổ theo chương.
+// Chương "Nghiệp vụ vận tải" không có câu trong đề; câu điểm liệt được tính
+// vào nhóm quy định chung và quy tắc giao thông (dữ liệu không tách riêng).
+const EXAM_DISTRIBUTION: { chapter: string; count: number }[] = [
+  { chapter: "Quy định chung và quy tắc giao thông", count: 9 },
+  { chapter: "Văn hóa giao thông, đạo đức người lái xe", count: 1 },
+  { chapter: "Kỹ thuật lái xe", count: 1 },
+  { chapter: "Cấu tạo và sửa chữa", count: 1 },
+  { chapter: "Báo hiệu đường bộ", count: 9 },
+  { chapter: "Giải thế sa hình và xử lý tình huống", count: 9 },
+];
 
 type Mode = "study" | "exam";
 type ExamStatus = "idle" | "active" | "done";
@@ -32,6 +45,44 @@ function shuffleQuestions(questions: Question[]) {
     [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
   }
   return copy;
+}
+
+// Tạo đề thi 30 câu theo bố cục từng chương. Chỉ chọn ngẫu nhiên câu hỏi trong
+// mỗi chương, không xáo trộn thứ tự đáp án của từng câu.
+function buildExam(questions: Question[]) {
+  const byChapter = new Map<string, Question[]>();
+  for (const question of questions) {
+    const list = byChapter.get(question.chapter);
+    if (list) {
+      list.push(question);
+    } else {
+      byChapter.set(question.chapter, [question]);
+    }
+  }
+
+  const picked: Question[] = [];
+  const used = new Set<number>();
+  for (const { chapter, count } of EXAM_DISTRIBUTION) {
+    const pool = shuffleQuestions(byChapter.get(chapter) ?? []);
+    for (const question of pool.slice(0, count)) {
+      picked.push(question);
+      used.add(question.id);
+    }
+  }
+
+  // Bù thêm câu hỏi từ các chương khác nếu một chương không đủ số câu.
+  if (picked.length < EXAM_SIZE) {
+    const rest = shuffleQuestions(questions.filter((question) => !used.has(question.id)));
+    for (const question of rest) {
+      if (picked.length >= EXAM_SIZE) {
+        break;
+      }
+      picked.push(question);
+      used.add(question.id);
+    }
+  }
+
+  return picked.slice(0, EXAM_SIZE);
 }
 
 function withBasePath(path: string) {
@@ -188,7 +239,7 @@ export default function QuizApp({ questions }: { questions: Question[] }) {
   }, [examStatus, submitExam, timeLeft]);
 
   const startExam = () => {
-    const picked = shuffleQuestions(questions).slice(0, EXAM_SIZE);
+    const picked = buildExam(questions);
     setExamQuestions(picked);
     setExamAnswers({});
     setExamResult(null);
@@ -202,6 +253,7 @@ export default function QuizApp({ questions }: { questions: Question[] }) {
   const scorePercent = examResult
     ? Math.round((examResult.correct / examQuestions.length) * 100)
     : 0;
+  const examPassed = examResult ? examResult.correct >= PASS_SCORE : false;
 
   return (
     <main className="app-shell">
@@ -349,10 +401,16 @@ export default function QuizApp({ questions }: { questions: Question[] }) {
             </div>
 
             {examResult ? (
-              <div className="result-card">
-                <span>Kết quả</span>
-                <strong>{scorePercent}%</strong>
-                <p>Đúng {examResult.correct}, sai {examResult.wrong}, bỏ trống {examResult.unanswered}</p>
+              <div className={`result-card${examPassed ? " passed" : " failed"}`}>
+                <span>Kết quả {examPassed ? "· Đạt" : "· Không đạt"}</span>
+                <strong>{examResult.correct}/{examQuestions.length}</strong>
+                <p>
+                  Đúng {examResult.correct}, sai {examResult.wrong}, bỏ trống {examResult.unanswered} · {scorePercent}%
+                  <br />
+                  {examPassed
+                    ? "Đạt yêu cầu (tối thiểu 27/30 câu đúng)."
+                    : "Chưa đạt, cần đúng tối thiểu 27/30 câu."}
+                </p>
               </div>
             ) : null}
 
@@ -384,10 +442,11 @@ export default function QuizApp({ questions }: { questions: Question[] }) {
           <section className="main-column">
             {examStatus === "idle" ? (
               <div className="start-panel">
-                <h2>Đề thi thử 50 câu trong 33 phút</h2>
+                <h2>Đề thi thử 30 câu trong 20 phút</h2>
                 <p>
-                  Mỗi đề được chọn ngẫu nhiên từ toàn bộ 600 câu, bao gồm cả câu chữ,
-                  biển báo và sa hình trong tài liệu.
+                  Mỗi đề gồm 30 câu chọn theo bố cục đề thi lý thuyết hạng B: 9 câu quy tắc
+                  giao thông, 9 câu biển báo, 9 câu sa hình và tình huống, cùng các câu về
+                  văn hóa, kỹ thuật và cấu tạo. Trả lời đúng tối thiểu 27/30 câu để đạt.
                 </p>
                 <button type="button" onClick={startExam}>
                   Tạo đề ngẫu nhiên
