@@ -47,8 +47,9 @@ function shuffleQuestions(questions: Question[]) {
   return copy;
 }
 
-// Tạo đề thi 30 câu theo bố cục từng chương. Chỉ chọn ngẫu nhiên câu hỏi trong
-// mỗi chương, không xáo trộn thứ tự đáp án của từng câu.
+// Tạo đề thi 30 câu theo bố cục từng chương, xếp câu hỏi lần lượt theo đúng
+// thứ tự các chương. Chỉ chọn ngẫu nhiên câu hỏi trong mỗi chương (sắp theo
+// số câu tăng dần), không xáo trộn thứ tự đáp án của từng câu.
 function buildExam(questions: Question[]) {
   const byChapter = new Map<string, Question[]>();
   for (const question of questions) {
@@ -64,7 +65,8 @@ function buildExam(questions: Question[]) {
   const used = new Set<number>();
   for (const { chapter, count } of EXAM_DISTRIBUTION) {
     const pool = shuffleQuestions(byChapter.get(chapter) ?? []);
-    for (const question of pool.slice(0, count)) {
+    const chosen = pool.slice(0, count).sort((a, b) => a.id - b.id);
+    for (const question of chosen) {
       picked.push(question);
       used.add(question.id);
     }
